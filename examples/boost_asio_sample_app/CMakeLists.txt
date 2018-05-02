@@ -18,25 +18,35 @@ cmake_minimum_required(VERSION 3.0.2)
 
 project(AsioApp C CXX)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread")
+
 
 include_directories(${CMAKE_SOURCE_DIR})
 
-find_package(Boost 1.58.0 REQUIRED COMPONENTS system)
+
+find_package(Boost REQUIRED COMPONENTS system)
+
 
 set(HEADER
   ${CMAKE_SOURCE_DIR}/include/app/common/common.h
+  ${CMAKE_SOURCE_DIR}/include/app/common/random.h
   ${CMAKE_SOURCE_DIR}/include/app/common/uuid.h
   ${CMAKE_SOURCE_DIR}/include/app/network/internal/asio_server.h
+  ${CMAKE_SOURCE_DIR}/include/app/network/protocol.h
+  ${CMAKE_SOURCE_DIR}/include/app/network/server.h
 )
 
 set(CC
   ${CMAKE_SOURCE_DIR}/sources/common/uuid.cc
+  ${CMAKE_SOURCE_DIR}/sources/common/random.cc
   ${CMAKE_SOURCE_DIR}/sources/network/asio_server.cc
+  ${CMAKE_SOURCE_DIR}/sources/network/server.cc
 )
 
 set(SOURCES ${HEADER} ${CC})
-add_executable(app ${HEADER} ${CMAKE_SOURCE_DIR}/sources/main.cc ${SOURCES})
+add_executable(app ${HEADER} ${CMAKE_SOURCE_DIR}/sources/main.cc ${SOURCES}
+)
 
 target_link_libraries(app PUBLIC
  ${Boost_LIBRARIES}

@@ -6,6 +6,8 @@
 #include "include/app/common/common.h"
 #include "include/app/common/uuid.h"
 
+#include <array>
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/uuid/uuid.hpp>
 
@@ -28,7 +30,7 @@ typedef boost::asio::ip::tcp::acceptor TcpAsyncAcceptor;
 typedef boost::asio::ip::tcp::endpoint TcpEndpoint;
 typedef boost::asio::ip::tcp::socket TcpSocket;
 
-typedef std::vector<char> Buffer;
+typedef std::array<char, 256> Buffer;
 
 
 enum ErrorCode {
@@ -38,10 +40,10 @@ enum ErrorCode {
 };
 
 
-class TcpClient {
+class TcpClient : public boost::enable_shared_from_this<TcpClient> {
  public:
   typedef function<void(
-      const Buffer &buffer,
+      const shared_ptr<Buffer> &buffer,
       const boost::system::error_code &/*error*/,
       const size_t /*bytes_transferred*/)> Callback;
 
@@ -53,13 +55,28 @@ class TcpClient {
   void Connect(const string &ip, const uint16_t port,
                const Callback &cb=kNullCallback);
 
-  void Receive(Buffer *buffer, const Callback &cb=kNullCallback);
-  void Send(const Buffer &buffer, const Callback &cb=kNullCallback);
+  void Receive(const shared_ptr<Buffer> &buffer, const size_t buffer_size,
+               const Callback &cb=kNullCallback);
+  void Send(const shared_ptr<Buffer> &buffer, const size_t buffer_size,
+            const Callback &cb=kNullCallback);
+
+  void set_uuid(const Uuid &uuid);
 
   TcpSocket &socket();
+  const Uuid &uuid() const;
  private:
+  void OnReceived(const shared_ptr<Buffer> &buffer,
+                  const boost::system::error_code &error,
+                  const size_t read_bytes,
+                  const Callback &cb);
+  void OnSent(const shared_ptr<Buffer> &buffer,
+              const boost::system::error_code &error,
+              const size_t sent_bytes,
+              const Callback &cb);
+
   TcpSocket socket_;
   bool is_connected_;
+  Uuid uuid_;
 };
 
 
@@ -74,19 +91,17 @@ class TcpServer {
 
   typedef function<void(
       const shared_ptr<TcpClient> &/*tcp_client*/,
+      const boost::shared_ptr<Buffer> &/*buffer*/,
       const boost::system::error_code &/*error*/,
       const size_t /*read_bytes*/)> ReceiveHandler;
 
-
-  ErrorCode Initialize(const ServerProperty &property);
+  TcpServer(const ServerProperty &property);
 
   ErrorCode Start();
 
   void RegisterAcceptHandler(const AcceptHandler &handler);
   void RegisterReceiveHandler(const ReceiveHandler &handler);
-
   const shared_ptr<TcpClient> Find(const Uuid &uuid);
-
   void Finalize();
 
  private:
@@ -95,7 +110,7 @@ class TcpServer {
                   const boost::system::error_code &error);
 
   void OnReceived(const shared_ptr<TcpClient> &client,
-                  const Buffer &buffer,
+                  const shared_ptr<Buffer> &buffer,
                   const boost::system::error_code &error,
                   const size_t read_bytes);
 
@@ -103,8 +118,10 @@ class TcpServer {
   ReceiveHandler receive_handler_;
 
   ServerProperty property_;
+
   boost::mutex mutex_;
   TcpClientMap clients_;
+  shared_ptr<TcpAsyncAcceptor> acceptor_;
 };
 
 

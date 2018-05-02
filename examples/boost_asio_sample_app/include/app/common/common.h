@@ -8,6 +8,15 @@
 
 #include <string>
 
+#define DEBUG
+
+#ifdef DEBUG
+  #define DLOG(MSG) std::cout << MSG << std::endl
+#else
+  #define DLOG(MSG)
+#endif
+
+
 namespace app {
 
 using boost::bind;
